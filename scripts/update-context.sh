@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# Review and update context files as a project evolves.
+# Promote MCP memory decisions into context files.
 #
 # Usage (run from project root):
 #   update-context [project-name]
 #
-# Launches Claude Code with a structured prompt that:
-#   1. Pulls MCP memory decisions worth promoting to context files
-#   2. Scans tracked files (git ls-files) for config/tooling changes
-#   3. Flags stale entries in either file
-#   4. Applies edits — CLAUDE.md stays minimal, patterns.mdc gets the rest
+# Reads MCP memory and promotes settled decisions/patterns into the right file.
+# Does NOT audit or fix the repo. Run manually when you want to flush memory.
 #
 # Requires: install.sh already run, CLAUDE.md present in current directory.
 
@@ -22,7 +19,7 @@ if [ ! -f "./CLAUDE.md" ]; then
   exit 1
 fi
 
-# Ensure patterns.mdc exists — create it if this is an older project that predates the split
+# Ensure patterns.mdc exists — create it for projects that predate the split
 PATTERNS_FILE=".cursor/rules/patterns.mdc"
 if [ ! -f "$PATTERNS_FILE" ]; then
   TEMPLATE_DIR="$HOME/.claude/templates/project-context"
@@ -33,38 +30,27 @@ if [ ! -f "$PATTERNS_FILE" ]; then
   echo "✓ Created .cursor/rules/patterns.mdc"
 fi
 
-PROMPT="Review and update context files for the '$PROJECT_NAME' project.
+PROMPT="Promote MCP memory into context files for '$PROJECT_NAME'. Do not audit the repo or suggest fixes.
 
-There are two context files with different roles:
-- \`CLAUDE.md\` — loaded in every Cursor message (hard limit: 30 lines). Stack, commands, memory instruction only.
-- \`.cursor/rules/patterns.mdc\` — loaded on demand when relevant. Architecture, patterns, key decisions go here.
+Files:
+- \`CLAUDE.md\` — stack + commands only, hard limit 30 lines
+- \`.cursor/rules/patterns.mdc\` — architecture, patterns, decisions
 
-Work through these steps in order:
-
-1. **Read both files** — load \`CLAUDE.md\` and \`.cursor/rules/patterns.mdc\`.
-
-2. **Audit memory** — search MCP memory for '$PROJECT_NAME'. For each entry decide:
-   - Stable pattern or convention → promote to \`patterns.mdc\`, then delete from memory
-   - Architectural decision → promote to \`patterns.mdc\`, then delete from memory
-   - Resolved TODO or completed work → delete from memory
+Steps:
+1. Read both files.
+2. Search MCP memory for '$PROJECT_NAME'. For each entry:
+   - Stable pattern or decision → write it into \`patterns.mdc\`, delete from memory
+   - Resolved or completed item → delete from memory
    - Superseded by a newer entry → delete the old one
-   - Actively in-flight → leave it
-
-3. **Scan the repo** — run \`git ls-files\` to list tracked files. Read only:
-   - Top-level config files (package.json, Cargo.toml, pyproject.toml, Makefile, docker-compose.yml, .env.example, etc.)
-   - Do not read source files unless a command or path in CLAUDE.md needs verifying.
-   Find: commands that differ from what's documented, env vars missing from CLAUDE.md, new top-level directories not yet mentioned.
-
-4. **Flag stale entries** — anything in either file that no longer matches reality: renamed files, removed commands, outdated patterns.
-
-5. **Apply edits**:
-   - \`CLAUDE.md\`: stack, commands, memory instruction only. Hard limit: 30 lines. Move anything else to \`patterns.mdc\`.
-   - \`.cursor/rules/patterns.mdc\`: architecture, patterns, decisions. No size limit but keep entries concise.
-
-6. **Summarise** — print a brief bullet list of what was added, changed, and removed in each file."
+   - Actively in-flight → leave it unchanged
+3. If \`CLAUDE.md\` exceeds 30 lines, move the excess into \`patterns.mdc\`.
+4. If nothing needed changing, say 'No updates needed' and stop.
+5. Otherwise print a brief bullet list of what changed."
 
 echo ""
 echo "Updating context for '$PROJECT_NAME'..."
 echo ""
 
-claude -p --dangerously-skip-permissions "$PROMPT"
+claude -p --permission-mode bypassPermissions --no-session-persistence \
+  --allowedTools "Read,Edit,mcp__memory__search_nodes,mcp__memory__open_nodes,mcp__memory__read_graph,mcp__memory__create_entities,mcp__memory__add_observations,mcp__memory__create_relations,mcp__memory__delete_entities,mcp__memory__delete_observations,mcp__memory__delete_relations" \
+  "$PROMPT"
