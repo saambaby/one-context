@@ -11,7 +11,7 @@
 
 set -e
 
-TEMPLATE_DIR="$HOME/.claude/templates/ai-context"
+TEMPLATE_DIR="$HOME/.claude/templates/project-context"
 PROJECT_NAME="${1:-$(basename "$PWD")}"
 STACK="${2:-}"
 
@@ -27,17 +27,26 @@ if [ -f "./CLAUDE.md" ]; then
   exit 1
 fi
 
+# Cross-platform inline sed (BSD on Mac requires explicit empty extension)
+sedi() {
+  if sed --version 2>/dev/null | grep -q GNU; then
+    sed -i "$@"
+  else
+    sed -i '' "$@"
+  fi
+}
+
 # Copy templates
 cp "$TEMPLATE_DIR/CLAUDE.md" ./CLAUDE.md
 mkdir -p .cursor/rules
 cp "$TEMPLATE_DIR/.cursor/rules/project.mdc" .cursor/rules/project.mdc
 
 # Substitute placeholders
-sed -i "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" CLAUDE.md
-sed -i "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" .cursor/rules/project.mdc
+sedi "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" CLAUDE.md
+sedi "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" .cursor/rules/project.mdc
 
 if [ -n "$STACK" ]; then
-  sed -i "s/\[STACK\]/$STACK/" CLAUDE.md
+  sedi "s/\[STACK\]/$STACK/" CLAUDE.md
 fi
 
 echo ""

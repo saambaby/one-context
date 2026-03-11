@@ -48,15 +48,15 @@ cd one-context
 
 What `install.sh` does:
 
-1. Copies `templates/ai-context/` to `~/.claude/templates/ai-context/`
-2. Copies scripts to `~/scripts/` and makes them executable
+1. Copies `templates/project-context/` to `~/.claude/templates/project-context/`
+2. Symlinks scripts into `~/.local/bin/` and makes them executable
 3. Registers the memory MCP with Claude Code (user scope)
 4. Writes `~/.cursor/mcp.json` pointing to the same memory path
-5. Creates `~/scripts/update-ai-setup` for keeping the install current
+5. Creates `~/.local/bin/update-ai-setup` for keeping the install current
 
 Re-running is safe — nothing is overwritten unless you pass `--force`.
 
-If `~/scripts` is not in your `PATH`, the installer will tell you what to add
+If `~/.local/bin` is not in your `PATH`, the installer will tell you what to add
 to your `.bashrc` / `.zshrc`.
 
 ### Using a shared memory location
@@ -175,7 +175,7 @@ one-context/
 │   ├── new-project.sh             ← per-project bootstrap
 │   └── update-context.sh          ← keep CLAUDE.md current as project evolves
 └── templates/
-    └── ai-context/
+    └── project-context/
         ├── CLAUDE.md              ← minimal project template (name, stack, commands)
         └── .cursor/
             └── rules/

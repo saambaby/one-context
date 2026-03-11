@@ -2,8 +2,8 @@
 # One-time machine setup for one-context.
 #
 # What it does:
-#   1. Copies templates to ~/.claude/templates/ai-context/
-#   2. Copies scripts to ~/scripts/ and makes them executable
+#   1. Copies templates to ~/.claude/templates/project-context/
+#   2. Symlinks scripts into ~/.local/bin/ and makes them executable
 #   3. Registers the memory MCP with Claude Code (user scope)
 #   4. Writes ~/.cursor/mcp.json pointing to the same memory path
 #
@@ -24,32 +24,39 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MCP_MEMORY_PATH="${MCP_MEMORY_PATH:-$HOME/.one-context}"
 
 # ── 1. Templates ──────────────────────────────────────────────────────────────
-TEMPLATE_DEST="$HOME/.claude/templates/ai-context"
+TEMPLATE_DEST="$HOME/.claude/templates/project-context"
 
 if [ -d "$TEMPLATE_DEST" ] && [ "$FORCE" = false ]; then
   echo "~ Templates already exist at $TEMPLATE_DEST (use --force to overwrite)"
 else
   rm -rf "$TEMPLATE_DEST"
-  cp -r "$REPO_DIR/templates/ai-context" "$TEMPLATE_DEST"
+  cp -r "$REPO_DIR/templates/project-context" "$TEMPLATE_DEST"
   echo "✓ Templates → $TEMPLATE_DEST"
 fi
 
 # ── 2. Scripts ────────────────────────────────────────────────────────────────
-mkdir -p "$HOME/scripts"
+BIN_DIR="$HOME/.local/bin"
+mkdir -p "$BIN_DIR"
 
 for script in new-project update-context; do
-  SCRIPT_DEST="$HOME/scripts/$script"
-  if [ -f "$SCRIPT_DEST" ] && [ "$FORCE" = false ]; then
-    echo "~ $SCRIPT_DEST already exists (use --force to overwrite)"
+  LINK_DEST="$BIN_DIR/$script"
+  LINK_SRC="$REPO_DIR/scripts/$script.sh"
+  chmod +x "$LINK_SRC"
+  if [ -L "$LINK_DEST" ] || { [ -f "$LINK_DEST" ] && [ "$FORCE" = false ]; }; then
+    if [ "$FORCE" = true ] || [ -L "$LINK_DEST" ]; then
+      ln -sf "$LINK_SRC" "$LINK_DEST"
+      echo "✓ Script → $LINK_DEST (symlink)"
+    else
+      echo "~ $LINK_DEST already exists (use --force to overwrite)"
+    fi
   else
-    cp "$REPO_DIR/scripts/$script.sh" "$SCRIPT_DEST"
-    chmod +x "$SCRIPT_DEST"
-    echo "✓ Script → $SCRIPT_DEST"
+    ln -sf "$LINK_SRC" "$LINK_DEST"
+    echo "✓ Script → $LINK_DEST (symlink)"
   fi
 done
 
 # Always write update-ai-setup with the current repo path baked in.
-cat > "$HOME/scripts/update-ai-setup" <<EOF
+cat > "$BIN_DIR/update-ai-setup" <<EOF
 #!/usr/bin/env bash
 # Pull latest changes from the one-context repo and reinstall.
 set -e
@@ -57,8 +64,8 @@ cd "$REPO_DIR"
 git pull
 ./install.sh --force
 EOF
-chmod +x "$HOME/scripts/update-ai-setup"
-echo "✓ Script → $HOME/scripts/update-ai-setup"
+chmod +x "$BIN_DIR/update-ai-setup"
+echo "✓ Script → $BIN_DIR/update-ai-setup"
 
 # ── 3. Claude Code MCP (user scope) ──────────────────────────────────────────
 # If already registered, extract the configured path so Cursor stays in sync.
@@ -106,10 +113,10 @@ EOF
 fi
 
 # ── PATH hint ─────────────────────────────────────────────────────────────────
-if ! echo "$PATH" | grep -q "$HOME/scripts"; then
+if ! echo "$PATH" | grep -q "$HOME/.local/bin"; then
   echo ""
-  echo "  Add ~/scripts to your PATH:"
-  echo "    echo 'export PATH=\"\$HOME/scripts:\$PATH\"' >> ~/.bashrc  # or ~/.zshrc"
+  echo "  Add ~/.local/bin to your PATH:"
+  echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc  # or ~/.zshrc"
 fi
 
 echo ""
