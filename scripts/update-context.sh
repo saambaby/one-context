@@ -51,6 +51,5 @@ echo ""
 echo "Updating context for '$PROJECT_NAME'..."
 echo ""
 
-claude -p --permission-mode bypassPermissions --no-session-persistence \
-  --allowedTools "Read,Edit,mcp__memory__search_nodes,mcp__memory__open_nodes,mcp__memory__read_graph,mcp__memory__create_entities,mcp__memory__add_observations,mcp__memory__create_relations,mcp__memory__delete_entities,mcp__memory__delete_observations,mcp__memory__delete_relations" \
-  "$PROMPT"
+printf '%s' "$PROMPT" | claude -p --permission-mode bypassPermissions --no-session-persistence \
+  --allowedTools "Read,Edit,mcp__memory__search_nodes,mcp__memory__open_nodes,mcp__memory__read_graph,mcp__memory__create_entities,mcp__memory__add_observations,mcp__memory__create_relations,mcp__memory__delete_entities,mcp__memory__delete_observations,mcp__memory__delete_relations"
