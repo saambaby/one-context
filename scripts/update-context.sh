@@ -67,4 +67,4 @@ echo ""
 echo "Updating context for '$PROJECT_NAME'..."
 echo ""
 
-claude -p --permission-mode acceptEdits "$PROMPT"
+claude -p --dangerously-skip-permissions "$PROMPT"
