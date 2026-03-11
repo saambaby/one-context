@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Review and update CLAUDE.md as a project evolves.
+# Review and update context files as a project evolves.
 #
 # Usage (run from project root):
 #   update-context [project-name]
 #
 # Launches Claude Code with a structured prompt that:
-#   1. Pulls MCP memory decisions worth promoting to CLAUDE.md
-#   2. Scans the repo for new/changed structure not yet documented
-#   3. Flags stale entries (dead files, renamed commands, outdated patterns)
-#   4. Proposes and applies edits — you confirm before anything changes
+#   1. Pulls MCP memory decisions worth promoting to context files
+#   2. Scans tracked files (git ls-files) for config/tooling changes
+#   3. Flags stale entries in either file
+#   4. Applies edits — CLAUDE.md stays minimal, patterns.mdc gets the rest
 #
 # Requires: install.sh already run, CLAUDE.md present in current directory.
 
@@ -22,32 +22,49 @@ if [ ! -f "./CLAUDE.md" ]; then
   exit 1
 fi
 
-PROMPT="Review and update CLAUDE.md for the '$PROJECT_NAME' project.
+# Ensure patterns.mdc exists — create it if this is an older project that predates the split
+PATTERNS_FILE=".cursor/rules/patterns.mdc"
+if [ ! -f "$PATTERNS_FILE" ]; then
+  TEMPLATE_DIR="$HOME/.claude/templates/project-context"
+  mkdir -p .cursor/rules
+  cp "$TEMPLATE_DIR/.cursor/rules/patterns.mdc" "$PATTERNS_FILE"
+  sed -i "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" "$PATTERNS_FILE" 2>/dev/null || \
+    sed -i '' "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" "$PATTERNS_FILE"
+  echo "✓ Created .cursor/rules/patterns.mdc"
+fi
+
+PROMPT="Review and update context files for the '$PROJECT_NAME' project.
+
+There are two context files with different roles:
+- \`CLAUDE.md\` — loaded in every Cursor message (hard limit: 30 lines). Stack, commands, memory instruction only.
+- \`.cursor/rules/patterns.mdc\` — loaded on demand when relevant. Architecture, patterns, key decisions go here.
 
 Work through these steps in order:
 
-1. **Read CLAUDE.md** — load the current content so you know what's already documented.
+1. **Read both files** — load \`CLAUDE.md\` and \`.cursor/rules/patterns.mdc\`.
 
 2. **Audit memory** — search MCP memory for '$PROJECT_NAME'. For each entry decide:
-   - Stable decision or pattern → promote to CLAUDE.md, then delete from memory
-   - Resolved TODO or completed work → delete from memory (it's done)
-   - Superseded or contradicted by newer entries → delete the old one
-   - Active / still relevant session state → leave it
-   The goal is a small memory graph of things that are genuinely in-flight.
+   - Stable pattern or convention → promote to \`patterns.mdc\`, then delete from memory
+   - Architectural decision → promote to \`patterns.mdc\`, then delete from memory
+   - Resolved TODO or completed work → delete from memory
+   - Superseded by a newer entry → delete the old one
+   - Actively in-flight → leave it
 
-3. **Scan the repo** — look at the actual directory structure, key files, and any config/tooling files (package.json, Cargo.toml, pyproject.toml, Makefile, docker-compose.yml, etc.). Find:
-   - New modules, packages, or directories not yet in CLAUDE.md
-   - Build/run/test commands that differ from what's documented
-   - Environment variables defined in .env.example or config files but missing from CLAUDE.md
+3. **Scan the repo** — run \`git ls-files\` to list tracked files. Read only:
+   - Top-level config files (package.json, Cargo.toml, pyproject.toml, Makefile, docker-compose.yml, .env.example, etc.)
+   - Do not read source files unless a command or path in CLAUDE.md needs verifying.
+   Find: commands that differ from what's documented, env vars missing from CLAUDE.md, new top-level directories not yet mentioned.
 
-4. **Flag stale entries** — identify anything in CLAUDE.md that no longer matches reality: renamed files, removed commands, outdated patterns, resolved TODO items.
+4. **Flag stale entries** — anything in either file that no longer matches reality: renamed files, removed commands, outdated patterns.
 
-5. **Propose edits** — summarise what you'd add, change, and remove. If CLAUDE.md already exceeds ~80 lines of real content, propose moving the heaviest section into a focused topic file (e.g. \`.cursor/rules/api.mdc\`) and replacing it with a one-line reference. Wait for my confirmation before writing anything.
+5. **Apply edits**:
+   - \`CLAUDE.md\`: stack, commands, memory instruction only. Hard limit: 30 lines. Move anything else to \`patterns.mdc\`.
+   - \`.cursor/rules/patterns.mdc\`: architecture, patterns, decisions. No size limit but keep entries concise.
 
-6. **Apply** — once I confirm, make all changes. Keep CLAUDE.md concise; it's a reference document, not a tutorial."
+6. **Summarise** — print a brief bullet list of what was added, changed, and removed in each file."
 
 echo ""
-echo "Launching Claude Code to review CLAUDE.md for '$PROJECT_NAME'..."
+echo "Updating context for '$PROJECT_NAME'..."
 echo ""
 
-exec claude "$PROMPT"
+claude -p --permission-mode acceptEdits "$PROMPT"

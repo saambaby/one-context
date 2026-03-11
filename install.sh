@@ -42,13 +42,8 @@ for script in new-project update-context; do
   LINK_DEST="$BIN_DIR/$script"
   LINK_SRC="$REPO_DIR/scripts/$script.sh"
   chmod +x "$LINK_SRC"
-  if [ -L "$LINK_DEST" ] || { [ -f "$LINK_DEST" ] && [ "$FORCE" = false ]; }; then
-    if [ "$FORCE" = true ] || [ -L "$LINK_DEST" ]; then
-      ln -sf "$LINK_SRC" "$LINK_DEST"
-      echo "✓ Script → $LINK_DEST (symlink)"
-    else
-      echo "~ $LINK_DEST already exists (use --force to overwrite)"
-    fi
+  if [ -e "$LINK_DEST" ] && [ "$FORCE" = false ]; then
+    echo "~ $LINK_DEST already exists (use --force to overwrite)"
   else
     ln -sf "$LINK_SRC" "$LINK_DEST"
     echo "✓ Script → $LINK_DEST (symlink)"

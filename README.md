@@ -12,8 +12,10 @@ everywhere.
 
 ```
 Your repo
-├── CLAUDE.md                      ← stack, commands, patterns (you maintain this)
-└── .cursor/rules/project.mdc      ← @CLAUDE.md  (Cursor reads the same file)
+├── CLAUDE.md                      ← stack + commands only, ~30 lines max (loaded on every Cursor message)
+└── .cursor/rules/
+    ├── project.mdc                ← @CLAUDE.md, alwaysApply:true  (always loaded)
+    └── patterns.mdc               ← architecture, patterns, decisions, alwaysApply:false (on demand)
 
 Your machine (global)
 └── ~/.one-context/                ← knowledge graph: todos, decisions, build state
@@ -72,6 +74,13 @@ If the memory MCP is already registered in Claude Code, the installer reads its
 configured path automatically and uses that for Cursor too — both tools always
 point to the same location.
 
+If `~/.cursor/mcp.json` already exists, the installer leaves it untouched. To
+force it to sync with the Claude Code memory path, run with `--force`:
+
+```bash
+./install.sh --force
+```
+
 ---
 
 ## Update the install
@@ -101,7 +110,9 @@ This creates:
 ```
 my-project/
 ├── CLAUDE.md                      ← pre-filled with project name and stack
-└── .cursor/rules/project.mdc      ← loads CLAUDE.md in Cursor (alwaysApply)
+└── .cursor/rules/
+    ├── project.mdc                ← loads CLAUDE.md in Cursor (alwaysApply)
+    └── patterns.mdc               ← architecture, patterns, decisions (on demand)
 ```
 
 Then open Claude Code and say:
@@ -126,8 +137,9 @@ To save something during a session:
 
 ### Cursor
 
-Loads `CLAUDE.md` via `project.mdc` (`alwaysApply: true`) on every conversation.
-Also reads the same MCP memory since it's the same instruction in `CLAUDE.md`.
+`project.mdc` (`alwaysApply: true`) injects `CLAUDE.md` on every message — so
+keep it under 30 lines (stack + commands only). `patterns.mdc` (`alwaysApply:
+false`) is fetched on demand when the task is relevant to architecture or patterns.
 
 > Note: Cursor follows the memory instruction via the rule — it relies on the
 > model following it, not a hard guarantee.
@@ -146,11 +158,12 @@ update-context my-project
 ```
 
 Claude will:
-1. Read the current `CLAUDE.md`
-2. Audit MCP memory — promote stable decisions, clean up resolved items
-3. Scan the repo for new structure, commands, or env vars not yet documented
-4. Flag stale entries — dead files, renamed commands, resolved TODOs
-5. Propose all changes and wait for your confirmation before writing
+1. Read `CLAUDE.md` and `.cursor/rules/patterns.mdc`
+2. Audit MCP memory — promote stable decisions/patterns to `patterns.mdc`, clean up resolved items
+3. Scan tracked files (`git ls-files`) for config changes — commands, env vars, new directories
+4. Flag stale entries in either file
+5. Apply changes: `CLAUDE.md` stays under 30 lines, everything else goes to `patterns.mdc`
+6. Print a summary of what changed in each file
 
 **Good things to put in:**
 - Non-obvious architecture decisions and the reason behind them
@@ -179,7 +192,8 @@ one-context/
         ├── CLAUDE.md              ← minimal project template (name, stack, commands)
         └── .cursor/
             └── rules/
-                └── project.mdc   ← Cursor rule: @CLAUDE.md (alwaysApply)
+                ├── project.mdc   ← Cursor rule: @CLAUDE.md (alwaysApply)
+                └── patterns.mdc  ← architecture, patterns, decisions (on demand)
 ```
 
 ---

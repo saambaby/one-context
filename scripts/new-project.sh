@@ -21,12 +21,6 @@ if [ ! -d "$TEMPLATE_DIR" ]; then
   exit 1
 fi
 
-# Guard against overwriting existing files
-if [ -f "./CLAUDE.md" ]; then
-  echo "✗ CLAUDE.md already exists. Aborting."
-  exit 1
-fi
-
 # Cross-platform inline sed (BSD on Mac requires explicit empty extension)
 sedi() {
   if sed --version 2>/dev/null | grep -q GNU; then
@@ -36,24 +30,38 @@ sedi() {
   fi
 }
 
-# Copy templates
-cp "$TEMPLATE_DIR/CLAUDE.md" ./CLAUDE.md
 mkdir -p .cursor/rules
-cp "$TEMPLATE_DIR/.cursor/rules/project.mdc" .cursor/rules/project.mdc
 
-# Substitute placeholders
-sedi "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" CLAUDE.md
-sedi "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" .cursor/rules/project.mdc
+# CLAUDE.md — skip if already exists
+if [ -f "./CLAUDE.md" ]; then
+  echo "~ CLAUDE.md already exists, skipping"
+else
+  cp "$TEMPLATE_DIR/CLAUDE.md" ./CLAUDE.md
+  sedi "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" CLAUDE.md
+  [ -n "$STACK" ] && sedi "s/\[STACK\]/$STACK/" CLAUDE.md
+  echo "✓ CLAUDE.md"
+fi
 
-if [ -n "$STACK" ]; then
-  sedi "s/\[STACK\]/$STACK/" CLAUDE.md
+# project.mdc — skip if already exists
+if [ -f ".cursor/rules/project.mdc" ]; then
+  echo "~ .cursor/rules/project.mdc already exists, skipping"
+else
+  cp "$TEMPLATE_DIR/.cursor/rules/project.mdc" .cursor/rules/project.mdc
+  sedi "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" .cursor/rules/project.mdc
+  echo "✓ .cursor/rules/project.mdc  (alwaysApply — stack + commands, every message)"
+fi
+
+# patterns.mdc — skip if already exists
+if [ -f ".cursor/rules/patterns.mdc" ]; then
+  echo "~ .cursor/rules/patterns.mdc already exists, skipping"
+else
+  cp "$TEMPLATE_DIR/.cursor/rules/patterns.mdc" .cursor/rules/patterns.mdc
+  sedi "s/\[PROJECT_NAME\]/$PROJECT_NAME/g" .cursor/rules/patterns.mdc
+  echo "✓ .cursor/rules/patterns.mdc (on-demand — architecture, patterns, decisions)"
 fi
 
 echo ""
-echo "✓ CLAUDE.md"
-echo "✓ .cursor/rules/project.mdc  (@CLAUDE.md — Cursor reads the same file)"
-echo ""
-echo "Memory is global via MCP (~/.mcp-memory/). Nothing extra to set up."
+echo "Memory is global via MCP. Nothing extra to set up."
 echo ""
 echo "Next — open Claude Code and say:"
 echo "  'Starting $PROJECT_NAME. Stack: ${STACK:-<your stack>}."

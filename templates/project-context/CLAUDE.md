@@ -11,4 +11,4 @@
 ```
 
 ## Memory
-At the start of each session, search MCP memory for "[PROJECT_NAME]" to recall open todos, decisions, and current state.
+At the start of each session, search MCP memory for "[PROJECT_NAME]" and load only active todos and current state. Skip resolved items and historical decisions unless directly relevant to the task.
